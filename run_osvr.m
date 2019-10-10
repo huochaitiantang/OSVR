@@ -11,7 +11,14 @@ clear all; close all;
 % of frame and the second column is associated intensity value
 % test_data: a D*T' matrix containing testing frames, where D is the
 % dimension of feature and T' is number of testing frames
-load('data.mat','train_data_seq','train_label_seq','test_data','test_label');
+%%dataset = 'data.mat';
+dataset = '/home/liuliang/DISK_2T/datasets/movie/new/dataset/mat_feature/lbp_Angry.mat';
+%% dataset = '/home/liuliang/DISK_2T/datasets/movie/new/dataset/mat_feature/lbp_Disgust.mat';
+%% dataset = '/home/liuliang/DISK_2T/datasets/movie/new/dataset/mat_feature/lbp_Fear.mat';
+%% dataset = '/home/liuliang/DISK_2T/datasets/movie/new/dataset/mat_feature/lbp_Happy.mat';
+%% dataset = '/home/liuliang/DISK_2T/datasets/movie/new/dataset/mat_feature/lbp_Sad.mat';
+%% dataset = '/home/liuliang/DISK_2T/datasets/movie/new/dataset/mat_feature/lbp_Surprise.mat';
+load(dataset,'train_data_seq','train_label_seq','test_data','test_label');
 
 %% define constant
 loss = 2; % loss function of OSVR
@@ -26,6 +33,7 @@ max_iter = 300; % maximum number of iteration in optimizating OSVR
 
 %% Training 
 % formalize coefficients data structure
+fprintf('construct params:\n');
 [A,c,D,nInts,nPairs,weight] = constructParams(train_data_seq,train_label_seq,epsilon,bias,flag);
 mu = gamma(1)*ones(nInts+nPairs,1); % change the values if you want to assign different weights to different samples
 mu(nInts+1:end) = gamma(2)/gamma(1)*mu(nInts+1:end);
@@ -33,11 +41,13 @@ if smooth % add temporal smoothness
     mu = mu.*weight;
 end
 % solve the OSVR optimization problem in ADMM
+fprintf('solver admm:\n');
 [model,history,z] = admm(A,c,lambda,mu,'option',loss,'rho',rho,'max_iter',max_iter,'bias',1-bias); % 
 theta = model.w;
     
 %% Testing 
 % perform testing
+fprintf('test admm:\n');
 dec_values =theta'*[test_data; ones(1,size(test_data,2))];
 % compute evaluation metrics
 RR = corrcoef(dec_values,test_label);  
@@ -48,7 +58,11 @@ abs_test = sum(abs(ee))/length(ee); % Mean Absolute Error (MAE)
 mse_test = ee(:)'*ee(:)/length(ee); % Mean Square Error (MSE)
 icc_test = ICC(3,'single',dat); % Intra-Class Correlation (ICC)
 
+fprintf('ICC: %.5f\n', icc_test);
+fprintf('PCC: %.5f\n', ry_test);
+fprintf('MAE: %.5f\n', abs_test);
+
 %% Visualize results
-plot(test_label); hold on; 
-plot(dec_values,'r');
-legend('Ground truth','Prediction')
+%% plot(test_label); hold on; 
+%% plot(dec_values,'r');
+%% legend('Ground truth','Prediction')
