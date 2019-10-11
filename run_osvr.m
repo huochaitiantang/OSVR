@@ -12,9 +12,8 @@ clear all; close all;
 % test_data: a D*T' matrix containing testing frames, where D is the
 % dimension of feature and T' is number of testing frames
 
-%% dataset = 'data.mat';
-%% emotions = {'Angry', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprise'};
-emotions = {'Angry', 'Fear', 'Sad', 'Surprise'};
+emotions = {'Angry', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprise'};
+%% emotions = {'Angry', 'Fear', 'Sad', 'Surprise'};
 feature = 'lbp';
 base_dir = '/home/liuliang/DISK_2T/datasets/movie/new/dataset/mat_feature';
 
@@ -23,6 +22,7 @@ for i = 1:length(emotions)
     fprintf('For %s:\n', emotion)
 
     dataset = sprintf('%s/%s_%s.mat', base_dir, feature, emotion);
+    %% dataset = 'data.mat';
     load(dataset,'train_data_seq','train_label_seq','test_data','test_label');
     
     %% define constant
@@ -40,6 +40,9 @@ for i = 1:length(emotions)
     % formalize coefficients data structure
     fprintf('Construct params...\n');
     [A,c,D,nInts,nPairs,weight] = constructParams(train_data_seq,train_label_seq,epsilon,bias,flag);
+    fprintf('Num of pairs: %d\n', nPairs)
+    %% continue;
+
     mu = gamma(1)*ones(nInts+nPairs,1); % change the values if you want to assign different weights to different samples
     mu(nInts+1:end) = gamma(2)/gamma(1)*mu(nInts+1:end);
     if smooth % add temporal smoothness
@@ -63,8 +66,8 @@ for i = 1:length(emotions)
     mse_test = ee(:)'*ee(:)/length(ee); % Mean Square Error (MSE)
     icc_test = ICC(3,'single',dat); % Intra-Class Correlation (ICC)
     
-    fprintf('ICC: %.5f\n', icc_test);
     fprintf('PCC: %.5f\n', ry_test);
+    fprintf('ICC: %.5f\n', icc_test);
     fprintf('MAE: %.5f\n', abs_test);
     
     %% Visualize results
