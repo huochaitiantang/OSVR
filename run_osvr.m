@@ -12,30 +12,46 @@ clear all; close all;
 % test_data: a D*T' matrix containing testing frames, where D is the
 % dimension of feature and T' is number of testing frames
 
-features = {'lbp', 'hog', 'landmarks', 'sift', 'gabor', 'dct'};
-emotions = {'Angry', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprise'};
+%% features = {'lbp', 'hog', 'landmarks', 'sift', 'gabor', 'dct'};
+%% features = {'lbp_pca_0.95', 'cat_lbp_pca_0.95_landmarks'};
+features = {'landmarks'};
+%% emotions = {'Angry', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprise'};
+%% emotions = {'Angry', 'Disgust', 'Fear', 'Sad', 'Surprise'};
 %% features = {'landmarks'};
-%% emotions = {'Fear'};
+emotions = {'Happy'};
 
-base_dir = '/home/liuliang/DISK_2T/datasets/movie/new/mat_feature/labels_2142';
-fid=fopen('log_osvr_l1.txt','w');
+base_dir = '/home/liuliang/DISK_2T/datasets/movie/new/mat_feature';
+base_sample_dir = sprintf('%s/labels_2142', base_dir);
+base_test_clips_dir = sprintf('%s/test_clips', base_dir);
+
+loss = 1; % loss function of OSVR
+fid=fopen('log_osvr_l1.txt','a');
 
 for i = 1:length(emotions)
     for j = 1:length(features)
         pccs = zeros(5, 1);
         iccs = zeros(5, 1);
         maes = zeros(5, 1);
+
+        fname = sprintf('res/res_osvr_l%d_%s_%s.txt', loss, emotions{i}, features{j});
+        fres = fopen(fname, 'a');
         for k_fold_index = 0:4
             emotion = emotions{i};
+            test_clip = sprintf('%s/%s_%d.txt', base_test_clips_dir, emotion, k_fold_index);
+            [clip_ids, frame_cnts]=textread(test_clip, '%s %d');
+
+            %for mm = 1:length(clip_ids)
+            %    fprintf('clip_id:%s frame_cnt:%d\n', clip_ids{mm}, frame_cnts(mm));
+            %end
+
             fprintf('For %s - %s - fold_%d:\n', emotion, features{j}, k_fold_index);
             fprintf(fid, 'For %s - %s - fold_%d:\n', emotion, features{j}, k_fold_index);
 
-            dataset = sprintf('%s/%s_%s_fold%d.mat', base_dir, features{j}, emotion, k_fold_index);
+            dataset = sprintf('%s/%s_%s_fold%d.mat', base_sample_dir, features{j}, emotion, k_fold_index);
             %% dataset = 'data.mat';
             load(dataset,'train_data_seq','train_label_seq','test_data','test_label');
             
             %% define constant
-            loss = 1; % loss function of OSVR
             bias = 1; % include bias term or not in OSVR
             lambda = 1; % scaling parameter for primal variables in OSVR
             gamma = [100 1]; % loss balance parameter
@@ -67,6 +83,19 @@ for i = 1:length(emotions)
             % perform testing
             fprintf('Test...\n');
             dec_values =theta'*[test_data; ones(1,size(test_data,2))];
+            
+            dec_values
+            % write the predict result
+            base = 0;
+            for idx = 1:length(clip_ids)
+                fprintf(fres, '%s', clip_ids{idx});
+                for offset = 1:frame_cnts(idx)
+                    fprintf(fres, ' %.5f', dec_values(base + offset));
+                end
+                fprintf(fres, '\n');
+                base = base + frame_cnts(idx);
+            end
+            
             % compute evaluation metrics
             RR = corrcoef(dec_values,test_label);  
             ee = dec_values - test_label; 
@@ -91,6 +120,7 @@ for i = 1:length(emotions)
             %% plot(dec_values,'r');
             %% legend('Ground truth','Prediction')
         end
+        fclose(fres);
         %% cal mean metric
         fprintf('Result of %s - %s:\n', emotion, features{j});
         fprintf('++ PCC: %.5f\n', mean(pccs));
